@@ -1,23 +1,23 @@
 ﻿[
     {
-        "file":  "vsc_launcher.ps1",
+        "file":  "start.ps1",
         "role":  "Point d\u0027entree : en-tete, relance en processus neuf, chargement des modules, BuildUI/RebuildUI, boucle ShowDialog, nettoyage.",
-        "lines":  85,
+        "lines":  116,
         "items":  [
                       {
                           "name":  "$script:BuildUI",
                           "kind":  "scriptblock",
                           "params":  "",
-                          "lineStart":  47,
-                          "lineEnd":  58,
+                          "lineStart":  78,
+                          "lineEnd":  89,
                           "description":  "Scriptblock REEXECUTABLE qui (re)construit toute l\u0027interface en executant les fichiers ui-*.ps1 dans la portee script."
                       },
                       {
                           "name":  "$script:RebuildUI",
                           "kind":  "scriptblock",
                           "params":  "",
-                          "lineStart":  64,
-                          "lineEnd":  72,
+                          "lineStart":  95,
+                          "lineEnd":  103,
                           "description":  "Rechargement a chaud : arrete les timers, libere les controles, refusionne le cache LAN puis relance BuildUI. La fenetre reste en place."
                       }
                   ]

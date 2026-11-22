@@ -1,5 +1,5 @@
-# Regenere docs/api-index.json et docs/FUNCTIONS.md a partir du code (AST PowerShell).
-# Lancer :  powershell -NoProfile -File .\vsc_launcher\docs\generate-api-docs.ps1
+﻿# Regenere docs/api-index.json et docs/FUNCTIONS.md a partir du code (AST PowerShell).
+# Lancer :  powershell -NoProfile -File .\docs\generate-api-docs.ps1
 # A refaire apres toute modification (les numeros de ligne bougent). Les descriptions
 # manuelles sont dans descriptions.psd1 ; sinon le commentaire juste au-dessus du bloc est utilise.
 $ErrorActionPreference = 'Stop'
@@ -9,18 +9,18 @@ $root = Split-Path $dir -Parent
 $desc = Import-PowerShellDataFile (Join-Path $docs 'descriptions.psd1')
 $utf8 = New-Object System.Text.UTF8Encoding($true)
 
-$main  = Get-Item (Join-Path $root 'vsc_launcher.ps1')
-$files = @($main) + @(Get-ChildItem $dir -Filter *.ps1 | Sort-Object Name) + @(Get-ChildItem (Join-Path $dir 'cartes') -Filter *.ps1 | Sort-Object Name)
+$main  = Get-Item (Join-Path $dir 'start.ps1')
+$files = @($main) + @(Get-ChildItem $dir -Filter *.ps1 | Where-Object { $_.Name -ne 'start.ps1' } | Sort-Object Name) + @(Get-ChildItem (Join-Path $dir 'cartes') -Filter *.ps1 | Sort-Object Name)
 
 $all = @()
 foreach ($f in $files) {
   $t = $null; $e = $null
   $ast   = [System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$t, [ref]$e)
   $lines = [System.IO.File]::ReadAllLines($f.FullName, [System.Text.Encoding]::UTF8)
-  $rel   = if ($f.DirectoryName -eq $root) { $f.Name } else { $f.FullName.Substring($dir.Length + 1) -replace '\\','/' }
+  $rel   = if ($f.Name -eq 'start.ps1') { 'start.ps1' } else { $f.FullName.Substring($dir.Length + 1) -replace '\\','/' }
   $role  = ''
   foreach ($l in ($lines | Select-Object -First 3)) { if ($l -match '#\s*(?:cartes\\)?[\w\-\.]+\.ps1\s+-\s+(.*)$') { $role = $Matches[1]; break } }
-  if (-not $role -and $f.Name -eq 'vsc_launcher.ps1') { $role = "Point d'entree : en-tete, relance en processus neuf, chargement des modules, BuildUI/RebuildUI, boucle ShowDialog, nettoyage." }
+  if (-not $role -and $f.Name -eq 'start.ps1') { $role = "Point d'entree : en-tete, relance en processus neuf, chargement des modules, BuildUI/RebuildUI, boucle ShowDialog, nettoyage." }
   $items = @()
   $nodes = $ast.FindAll({ param($x)
       ($x -is [System.Management.Automation.Language.FunctionDefinitionAst]) -or

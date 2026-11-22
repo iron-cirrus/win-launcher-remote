@@ -1,6 +1,6 @@
-# AI-CONTEXT — lire AVANT de modifier le code
+﻿# AI-CONTEXT — lire AVANT de modifier le code
 
-Projet : lanceur WinForms en **PowerShell 5.1** (Windows). Entree : `C:\app\vsc_launcher.ps1` ; modules : `C:\app\vsc_launcher\`.
+Projet : lanceur WinForms en **PowerShell 5.1** (Windows). Entree : `C:\app\win-launcher-remote\start.ps1` ; modules : meme dossier (racine du depot `win-launcher-remote`).
 Index machine : [api-index.json](api-index.json) (fichier → blocs → lignes → description). Reference lisible : [FUNCTIONS.md](FUNCTIONS.md). Etat : [STATE.md](STATE.md). Vue humaine : [README.md](README.md).
 Langue des commentaires et du journal : **francais, sans accents dans le code** (ASCII dans les chaines de log, les accents sont tolerables mais les fichiers sont en UTF-8 **avec BOM** — a conserver, PS 5.1 en a besoin).
 
@@ -10,7 +10,7 @@ Langue des commentaires et du journal : **francais, sans accents dans le code** 
 2. Ordre de chargement : `01..13` (fondations) puis `$script:BuildUI` = `ui-10 … ui-95`. `ui-50-cartes.ps1` compile `cartes\*.ps1` (tri alphabetique) en scriptblocks **une fois**, puis les execute par dot-source **a chaque carte** dans `foreach ($m in $MachinesOrd)`.
 3. `BuildUI` est **rejouable** : `RebuildUI` l'execute a nouveau apres un scan LAN, dans la **meme fenetre** (`$form` non recree). Tout code de `ui-*`/`cartes\*` doit donc etre **idempotent** et liberer ce qu'il cree (GDI+, timers). `$script:Rebuild` vaut `$true` lors d'une reconstruction.
 4. Les variables « locales » du code de `ui-*` et `cartes\*` ($m, $card, $form, $cardW, $winW, $btnY, $MachinesOrd…) vivent en **portee script** : elles sont partagees entre fichiers et lisibles par les handlers. Ne pas les renommer sans grep global.
-5. Ajouter un fichier : `vsc_launcher\NN-nom.ps1` n'est PAS charge automatiquement → l'ajouter dans la liste de `vsc_launcher.ps1`. Un fichier dans `cartes\` est, lui, charge automatiquement. Un fichier `ui-*` doit etre ajoute dans le bloc `$script:BuildUI` de `vsc_launcher.ps1`.
+5. Ajouter un fichier : `NN-nom.ps1` (racine) n'est PAS charge automatiquement → l'ajouter dans la liste de `start.ps1`. Un fichier dans `cartes\` est, lui, charge automatiquement. Un fichier `ui-*` doit etre ajoute dans le bloc `$script:BuildUI` de `start.ps1`.
 
 ## Invariants — NE PAS casser
 
@@ -49,7 +49,7 @@ Attention : `LogFn` n'existe qu'apres `ui-30` ; les modules `01..13` testent `if
 - **Ajouter une etape de carte** : creer `cartes\NN-nom.ps1` ; elle voit `$m`, `$card`, `$cardW`, `$cardH`, `$lblLabel`… et doit ajouter ses controles a `$card.Controls` (avant `09-finalisation`, qui fait `AddRange` et le z-order).
 - **Ajouter un reglage** : declarer `$script:Nom = valeur` dans le fichier `04-`/`06-` concerne, avec un commentaire expliquant l'unite.
 - **Valider apres modification** : analyser chaque fichier avec `[System.Management.Automation.Language.Parser]::ParseFile` (0 erreur), puis lancer le script ~20 s et verifier l'absence d'erreur sur stderr (`Start-Process powershell -File ... -RedirectStandardError`). Un test fonctionnel reel (clic, Moonlight) exige l'utilisateur.
-- **Regenerer la doc** : `powershell -NoProfile -File C:\app\vsc_launcher\docs\generate-api-docs.ps1` (met a jour `FUNCTIONS.md` et `api-index.json`). Ajouter une description manuelle dans `descriptions.psd1` pour un bloc sans commentaire.
+- **Regenerer la doc** : `powershell -NoProfile -File C:\app\win-launcher-remote\docs\generate-api-docs.ps1` (met a jour `FUNCTIONS.md` et `api-index.json`). Ajouter une description manuelle dans `descriptions.psd1` pour un bloc sans commentaire.
 - **Ne pas** deplacer un bloc `$script:X = {` apres le premier code qui l'appelle : l'ordre de definition compte (les blocs sont appeles a l'execution, mais `. $script:MergeLanCache` et `UpdateHome` s'executent des le chargement).
 
 ## Fichiers et dossiers ignorables

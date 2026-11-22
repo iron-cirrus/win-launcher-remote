@@ -1,4 +1,4 @@
-# VSC Launcher — documentation (humains)
+﻿# VSC Launcher — documentation (humains)
 
 Lanceur de machines sous forme de **cartes colorees** (WinForms / PowerShell 5.1).
 Un clic sur une carte ouvre la machine : VS Code Remote-SSH (Linux), Moonlight ou RDP (Windows), VNC, terminal SSH.
@@ -10,10 +10,10 @@ Un clic sur une carte ouvre la machine : VS Code Remote-SSH (Linux), Moonlight o
 ## Lancer
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File C:\app\vsc_launcher.ps1
+powershell -ExecutionPolicy Bypass -File C:\app\win-launcher-remote\start.ps1
 ```
 
-Le dossier `vsc_launcher\` doit rester a cote de `vsc_launcher.ps1`. Le script se relance seul dans un processus neuf
+`start.ps1` est a la RACINE du depot `win-launcher-remote` (ancien `C:\app\vsc_launcher.ps1`, puis `vsc_launcher\start.ps1`) et charge ses modules depuis son propre dossier. Le script se relance seul dans un processus neuf
 si la console a deja affiche une fenetre WinForms (sinon d'anciens minuteurs survivent et agissent sur les nouvelles cartes).
 
 ## Ce que fait l'application
@@ -30,8 +30,8 @@ si la console a deja affiche une fenetre WinForms (sinon d'anciens minuteurs sur
 ## Architecture en un coup d'oeil
 
 ```
-vsc_launcher.ps1           point d'entree (85 lignes)
-└─ vsc_launcher\
+win-launcher-remote\   (racine du depot git)
+   ├─ start.ps1            point d'entree (85 lignes)
    ├─ 01..13-*.ps1         FONDATIONS : P/Invoke, couleurs, machines, ecrans, Moonlight/RDP, disposition, panneau haut
    ├─ ui-10..ui-95-*.ps1   CONTENU de $script:BuildUI (construction de la fenetre, rejouable)
    │   └─ ui-50-cartes.ps1 boucle « une carte par machine » → cartes\01..09-*.ps1
@@ -43,7 +43,7 @@ Tout est charge par **dot-source** : tous les fichiers partagent **la meme porte
 
 ### Ordre d'execution
 
-1. `vsc_launcher.ps1` : garde « processus neuf », puis dot-source de `01` a `13`.
+1. `start.ps1` : garde « processus neuf », puis dot-source de `01` a `13`.
 2. Definition de `$script:BuildUI` (qui dot-source `ui-10` a `ui-95`) et de `$script:RebuildUI`.
 3. `. $script:BuildUI` puis `$form.ShowDialog()` — appele **une seule fois**.
 4. A la fin du scan LAN, `RebuildUI` reconstruit les cartes **dans la fenetre existante** (la fenetre ne bouge pas).
@@ -51,7 +51,7 @@ Tout est charge par **dot-source** : tous les fichiers partagent **la meme porte
 
 ## Les fichiers
 
-### Fondations (`vsc_launcher\01..13`)
+### Fondations (`01..13` a la racine)
 
 | Fichier | Contenu |
 |---|---|
@@ -69,7 +69,7 @@ Tout est charge par **dot-source** : tous les fichiers partagent **la meme porte
 | `12-sunshine` | Sonde Sunshine (ports 47989/47984/47990/48010), icone Moonlight des cartes. |
 | `13-panneau-haut` | Mini-carte globale des ecrans + liste des sessions distantes. |
 
-### Construction de l'interface (`vsc_launcher\ui-*`)
+### Construction de l'interface (`ui-*` a la racine)
 
 | Fichier | Contenu |
 |---|---|
@@ -84,7 +84,7 @@ Tout est charge par **dot-source** : tous les fichiers partagent **la meme porte
 | `ui-90-watchdog-fenetres` | `OpenCheckTick` (5 s) : fenetres VS Code, VNC, SSH, Sunshine, sessions. |
 | `ui-95-watchdog-ping` | `PingTick` (15 s), `PingCollect` (250 ms), style des cartes, timers, suivi du scan LAN. |
 
-### Etapes d'une carte (`vsc_launcher\cartes\`)
+### Etapes d'une carte (`cartes\`)
 
 `01-fond-filigrane` → `02-textes` → `03-logo-vscode` → `04-icone-vnc` → `05-icone-ssh` → `06-clics-survol` → `07-ecrans-windows` → `08-icone-sunshine` → `09-finalisation`.
 L'ordre est l'ordre alphabetique des noms ; un nouveau fichier ajoute dans ce dossier est execute automatiquement.
@@ -116,4 +116,4 @@ Tout dans `%LOCALAPPDATA%\vsc-launcher\` : `network-cache.json`, `screen-choice.
 
 ## Sauvegardes
 
-`vsc_launcher.ps1.bak-avant-*` (dans `C:\app`) sont les versions monolithiques d'avant decoupage ; `ui-50-cartes.ps1.bak-avant-decoupage` aussi. Ils ne sont plus utilises.
+`vsc_launcher.ps1.bak-avant-*` (restes dans `C:\app`, hors depot) sont les versions monolithiques d'avant decoupage ; `ui-50-cartes.ps1.bak-avant-decoupage` aussi. Ils ne sont plus utilises.

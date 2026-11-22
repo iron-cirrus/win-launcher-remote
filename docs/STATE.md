@@ -1,4 +1,4 @@
-# Etat, timers, taches de fond, fichiers
+﻿# Etat, timers, taches de fond, fichiers
 
 Toutes les variables ci-dessous sont en portee `$script:` (partagee par tous les fichiers). Detail des fonctions : [FUNCTIONS.md](FUNCTIONS.md).
 

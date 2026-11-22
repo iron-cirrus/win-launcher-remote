@@ -3,14 +3,14 @@
 > GENERE par `docs/generate-api-docs.ps1` le 2026-11-22. Ne pas editer a la main : modifier `descriptions.psd1` ou les commentaires du code, puis relancer le script.
 > Convention : un bloc `$script:Nom` s'appelle `& $script:Nom args` (ou `. $script:Nom` pour l'executer dans la portee courante). Voir [AI-CONTEXT.md](AI-CONTEXT.md).
 
-## `vsc_launcher.ps1` (85 lignes)
+## `start.ps1` (116 lignes)
 
 Point d'entree : en-tete, relance en processus neuf, chargement des modules, BuildUI/RebuildUI, boucle ShowDialog, nettoyage.
 
 | Nom | Parametres | Lignes | Role |
 |---|---|---|---|
-| `$script:BuildUI` |  | 47-58 | Scriptblock REEXECUTABLE qui (re)construit toute l'interface en executant les fichiers ui-*.ps1 dans la portee script. |
-| `$script:RebuildUI` |  | 64-72 | Rechargement a chaud : arrete les timers, libere les controles, refusionne le cache LAN puis relance BuildUI. La fenetre reste en place. |
+| `$script:BuildUI` |  | 78-89 | Scriptblock REEXECUTABLE qui (re)construit toute l'interface en executant les fichiers ui-*.ps1 dans la portee script. |
+| `$script:RebuildUI` |  | 95-103 | Rechargement a chaud : arrete les timers, libere les controles, refusionne le cache LAN puis relance BuildUI. La fenetre reste en place. |
 
 ## `01-win32-interop.ps1` (158 lignes)
 
