@@ -12,7 +12,7 @@ Point d'entree : en-tete, relance en processus neuf, chargement des modules, Bui
 | `$script:BuildUI` |  | 78-89 | Scriptblock REEXECUTABLE qui (re)construit toute l'interface en executant les fichiers ui-*.ps1 dans la portee script. |
 | `$script:RebuildUI` |  | 95-103 | Rechargement a chaud : arrete les timers, libere les controles, refusionne le cache LAN puis relance BuildUI. La fenetre reste en place. |
 
-## `01-win32-interop.ps1` (158 lignes)
+## `01-win32-interop.ps1` (209 lignes)
 
 P/Invoke Win32 (EnumWindows, SetWindowPos...) : types C# versionnes
 
@@ -82,7 +82,7 @@ mstsc (RDP) sur les ecrans selectionnes
 | `$script:OpenMstsc` | `[string]$ip, [bool]$useScreens = $true` | 31-62 | Ouvre mstsc vers $ip. $useScreens : utiliser la selection d'ecrans (dernier choix memorise, sinon ecran principal) ; sinon mstsc simple (fenetre normale, comme avant). |
 | `$script:RdpFallback` | `[string]$ip, [string]$why` | 65-71 | Repli RDP (mstsc) : script-level car appele aussi apres un lancement differe. La selection d'ecrans n'est appliquee que si l'utilisateur en a memorise une pour cette machine. |
 
-## `08-clients-distants.ps1` (144 lignes)
+## `08-clients-distants.ps1` (257 lignes)
 
 Detection des clients distants deja ouverts (Moonlight/mstsc)
 
@@ -90,7 +90,10 @@ Detection des clients distants deja ouverts (Moonlight/mstsc)
 |---|---|---|---|
 | `$script:ScreensOfPid` | `[int]$procId` | 7-24 | CLIENTS DISTANTS DEJA OUVERTS (scan au demarrage puis toutes les 15 s) Ecrans reellement couverts par les fenetres d'un processus : un ecran compte s'il est couvert a 30 % au moins par une fenetre, ou s'il contient plus de la moitie de cette fenetre. |
 | `$script:CardIpFor` | `[string]$hostTxt` | 26-37 | Carte correspondant a un nom d'hote ou une IP (ligne de commande Moonlight / mstsc) |
-| `$script:ScanRemoteClients` | `[bool]$initial = $false` | 46-144 | Detecte les clients Moonlight / mstsc DEJA ouverts (au demarrage puis toutes les 15 s) et les rattache a leur carte (adoption dans MlAdopted / RdpState). |
+| `$script:ScreensOfRect` | `$w` | 54-67 | Ecrans couverts par UNE fenetre [hwnd, gauche, haut, droite, bas, titre] (mmes regles que ScreensOfPid) |
+| `$script:ScreenIdxForMonitor` | `$l, $t, $r, $b` | 70-76 | Ecran dont le rectangle est IDENTIQUE au moniteur [g, h, d, b] renvoie par MonitorFromWindow (mmes coordonnees que Screen.Bounds pour ce processus) ; 0 si aucun. |
+| `$script:ScanRemoteApps` |  | 84-155 | Scan des remote apps (appele par ScanRemoteClients : des le demarrage, puis toutes les 15 s). Source : VscAppV1::RemoteAppWindows = fenetres visibles au TITRE contenant "SSH:" ou "VNC", avec le MONITEUR LE PLUS PROCHE (MonitorFromWindow) : une fenetre reduite dans la barre des taches renvoie un rectangle fantaisiste... |
+| `$script:ScanRemoteClients` | `[bool]$initial = $false` | 156-257 | Detecte les clients Moonlight / mstsc DEJA ouverts (au demarrage puis toutes les 15 s) et les rattache a leur carte (adoption dans MlAdopted / RdpState). |
 
 ## `09-moonlight-garde.ps1` (175 lignes)
 
@@ -104,7 +107,7 @@ Garde de taille des fenetres Moonlight, etat/lancement/arret des sessions
 | `$script:LaunchMoonlightNow` | `[string]$ip, $mlArgs, $mlArgsBase, $sel, $prof, [bool]$applied = $true` | 111-128 | Demarre Moonlight (stream) avec les arguments donnes, puis suivi de placement + surveillance. $applied : la resolution du profil a-t-elle pu etre appliquee sur la VM (voir SaveMoonlightProfile). |
 | `$script:QuitThenLaunch` | `[string]$ip, $mlArgs, $mlArgsBase, $sel, $prof` | 132-174 | Ferme la session en cours sur la VM ("Moonlight quit <hote>"), attend que la VM soit libre (currentgame = 0, 8 s au plus) puis lance Moonlight. Asynchrone (minuteur) : l'interface ne gele pas. Etat porte par le minuteur (Tag). |
 
-## `10-ouvrir-hote-windows.ps1` (275 lignes)
+## `10-ouvrir-hote-windows.ps1` (294 lignes)
 
 OpenWindowsHost : Moonlight si possible, sinon RDP
 
@@ -133,21 +136,21 @@ Sondage Sunshine (machines Linux) et icone Moonlight
 | `$script:PaintMlIcon` | `$g, $s` | 16-40 | Icone Moonlight + pastille d'etat, partagee par les cartes Windows (Apollo) et Linux (Sunshine). Pastille SANS vert/rouge (daltonisme) : session operationnelle = disque PLEIN bleu clair ; en connexion = anneau VIDE orange (la forme change, pas seulement la couleur). |
 | `$script:SunshineApply` | `$c, $open, $ipSeen, [bool]$quiet = $false` | 43-76 | Applique le resultat de la sonde de ports Sunshine a la carte Linux : affiche/masque/attenue l'icone Moonlight et memorise dans SunMemo. |
 
-## `13-panneau-haut.ps1` (353 lignes)
+## `13-panneau-haut.ps1` (387 lignes)
 
 Panneau du haut : carte des ecrans + sessions distantes
 
 | Nom | Parametres | Lignes | Role |
 |---|---|---|---|
-| `$script:CardNameFor` | `[string]$ip` | 19-25 | nom affiche d'une machine d'apres son adresse (carte), sinon l'adresse |
-| `$script:GetSessions` |  | 27-40 | sessions distantes connues : Moonlight (MlState) + mstsc (RdpState) |
-| `$script:RefreshSessionTags` |  | 42-61 | etiquette "ML 1+2" / "RDP 3" de chaque carte (sessions actives de la machine) |
-| `$script:RefreshTop` |  | 62-66 | Repeint la mini-carte des ecrans, la liste des sessions et met a jour les etiquettes de session des cartes. |
-| `$script:LauncherScreenIdx` |  | 68-74 | numero de l'ecran qui porte la fenetre du launcher |
-| `$script:FocusSession` | `[string]$ip, [string]$kind` | 76-98 | ramene au premier plan la fenetre d'une session (Moonlight : fenetre du flux ; mstsc : sa fenetre) |
-| `$script:PaintTopMap` | `$s, $e` | 99-188 | Paint de la mini-carte globale des ecrans (panneau du haut) : cadres a l'echelle, numeros, selection, survol. |
-| `$script:PaintTopList` | `$s, $e` | 189-238 | Paint de la liste des sessions distantes (Moonlight / mstsc) avec etat et ecrans utilises. |
-| `$script:BuildTopPanel` |  | 239-352 | Construit le panneau du haut : mini-carte (selecteur global d'ecrans) + liste des sessions, et branche leurs evenements souris. |
+| `$script:CardNameFor` | `[string]$ip` | 22-28 | nom affiche d'une machine d'apres son adresse (carte), sinon l'adresse |
+| `$script:GetSessions` |  | 30-47 | sessions distantes connues : Moonlight (MlState) + mstsc (RdpState) + remote apps (RemoteApps) |
+| `$script:RefreshSessionTags` |  | 49-68 | etiquette "ML 1+2" / "RDP 3" de chaque carte (sessions actives de la machine) |
+| `$script:RefreshTop` |  | 69-73 | Repeint la mini-carte des ecrans, la liste des sessions et met a jour les etiquettes de session des cartes. |
+| `$script:LauncherScreenIdx` |  | 75-81 | numero de l'ecran qui porte la fenetre du launcher |
+| `$script:FocusSession` | `[string]$ip, [string]$kind` | 84-126 | ramene au premier plan la fenetre d'une session (Moonlight : fenetre du flux ; mstsc : sa fenetre ; remote apps : la fenetre reperee par ScanRemoteApps, hwnd enregistre) |
+| `$script:PaintTopMap` | `$s, $e` | 127-220 | Paint de la mini-carte globale des ecrans (panneau du haut) : cadres a l'echelle, numeros, selection, survol. |
+| `$script:PaintTopList` | `$s, $e` | 221-270 | Paint de la liste des sessions distantes (Moonlight / mstsc) avec etat et ecrans utilises. |
+| `$script:BuildTopPanel` |  | 271-386 | Construit le panneau du haut : mini-carte (selecteur global d'ecrans) + liste des sessions, et branche leurs evenements souris. |
 
 ## `ui-10-fenetre-colonnes.ps1` (76 lignes)
 

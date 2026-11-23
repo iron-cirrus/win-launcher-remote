@@ -46,9 +46,11 @@ $script:MoonlightSafeQuitPatterns = @("Desktop", "Virtual Display")
 # H.264 will likely fail"). MESURE dans les journaux de Moonlight : 3840x2160 a 60 i/s, 3840x720 et
 # 3072x1728 = 0 erreur ; 5160x1440 et 7680x1440 = centaines d'erreurs "No valid decoder configuration" et
 # ECRAN NOIR. D'ou 4096x2304 (limite H.264 niveau 5.2). Pour depasser (3 ecrans en 7680x1440), il faut
-# que l'encodeur maison propose aussi du HEVC (le materiel le sait : jusqu'a 8192x8192). Reglage par adresse :
+# que l'encodeur maison propose aussi du HEVC (le materiel le sait : jusqu'a 8192x8192).
+# MAJ : l'encodeur Sunshine est desormais en HEVC -> plafond releve a 8192x4320 (limite HEVC du decodeur Iris Xe).
+# Si l'ecran redevient noir, rebaisser a 4096x2304 (H.264). Reglage par adresse :
 #   $script:MoonlightHostLimits['192.168.5.211'] = @{ MaxW = 4096; MaxH = 2304; MaxFps = 60 }
-$script:LinuxProfileLimit = @{ MaxW = 4096; MaxH = 2304; MaxFps = 60 }
+$script:LinuxProfileLimit = @{ MaxW = 8192; MaxH = 4320; MaxFps = 60 }
 $script:MoonlightHostLimits = @{}
 # Ports TCP que l'hote Apollo/Sunshine doit exposer : 47989 (HTTP, port de base) et
 # 47984 (HTTPS). Les ports video/audio sont en UDP : non sondables sans client.

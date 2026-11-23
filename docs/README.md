@@ -24,6 +24,7 @@ si la console a deja affiche une fenetre WinForms (sinon d'anciens minuteurs sur
 - **Pastille de ping** (watchdog 15 s) : « 12 ms » / « KO » — le statut n'est jamais porte par la couleur seule (palette adaptee au daltonisme).
 - **Detection des fenetres deja ouvertes** (watchdog 5 s) : un clic ramene la fenetre VS Code existante au lieu d'en ouvrir une autre.
 - **Windows** : mini-carte des ecrans du poste (clic / glisser / Ctrl) pour choisir sur quels ecrans ouvrir Moonlight (profil de resolution genere, fenetre calee, reconnexion automatique) ou mstsc.
+- **Remote apps sur le plan des écrans** : dès le démarrage, les fenêtres des applications distantes déjà ouvertes (VS Code Remote-SSH `[SSH: <alias>]`, clients VNC, en plus de Moonlight/mstsc) sont repérées et reportées avec leur icône sur l'écran qu'elles occupent (bordure violette = VS Code, verte = VNC) ; un clic sur l'icône ou la ligne de la liste ramène la fenêtre au premier plan.
 - **Linux** : icone Moonlight si Sunshine repond ; icones VNC et SSH selon les ports/sessions detectes.
 - **Outils** : deploiement des couleurs sur les hotes, miroir de dossiers de dev, synchronisation des conversations Zoo Code, journal.
 
@@ -62,7 +63,7 @@ Tout est charge par **dot-source** : tous les fichiers partagent **la meme porte
 | `05-ecrans` | Ecrans locaux (`GetScreens`), etats de session (`MlState`, `RdpState`), icones attenuees. |
 | `06-moonlight-profil` | Profil Moonlight genere depuis les ecrans, validation de contiguite, mini-carte (`MapLayout`…), `PlaceOnScreen`, `WatchMoonlight` (reconnexion). |
 | `07-mstsc` | Ouverture RDP sur les ecrans choisis, repli RDP. |
-| `08-clients-distants` | Scan des clients Moonlight/mstsc deja ouverts. |
+| `08-clients-distants` | Scan des clients Moonlight/mstsc deja ouverts + remote apps (fenetres VS Code Remote-SSH et VNC) reportées sur le plan des écrans. |
 | `09-moonlight-garde` | Garde de taille des fenetres, session/app courante de l'hote, lancement, « quitter puis relancer ». |
 | `10-ouvrir-hote-windows` | `OpenWindowsHost` (Moonlight sinon RDP) + recherche des icones VNC/VS Code/SSH. |
 | `11-icones-disposition` | Icones pre-rendues (`NewIconBmp`), ecran d'accueil, `Relayout` (disposition adaptative). |

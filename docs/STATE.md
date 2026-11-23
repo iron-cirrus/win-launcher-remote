@@ -20,6 +20,7 @@ Toutes les variables ci-dessous sont en portee `$script:` (partagee par tous les
 | `MlState` | IP → `@{State = connecting/live/lost/ended; Idxs; …}` (sessions Moonlight) |
 | `RdpState` | IP → `@{Idxs; Proc; Since}` (session mstsc) |
 | `MlAdopted` | sessions Moonlight deja ouvertes, reprises par `ScanRemoteClients` |
+| `RemoteApps` | cle `vsc:<alias>` / `vnc:<ip>` → `@{Kind; Alias; Ip; Name; Idxs; Hwnd; Pid; Since}` (remote apps reperees dans les fenetres) |
 | `ScreenChoice` | IP (ou `__global`) → numeros d'ecrans choisis (persiste) |
 | `MoonlightProfiles` | IP → dernier profil genere (persiste) |
 | `WinRef`, `WinGuardNote` | reference de position / derniere abstention de `GuardWindows` |

@@ -15,6 +15,9 @@ $script:ShowTopPanel = $true
 $script:TopMap = $null; $script:TopList = $null
 $script:TopPenBlue = [System.Drawing.Color]::FromArgb(86, 180, 233)
 $script:TopPenOrange = [System.Drawing.Color]::FromArgb(230, 159, 0)
+# remote apps (VS Code Remote-SSH / VNC) : bordures et icones distinctes sur le plan des ecrans
+$script:TopPenVsc = [System.Drawing.Color]::FromArgb(155, 89, 182)     # violet = fenetre VS Code remote
+$script:TopPenVnc = [System.Drawing.Color]::FromArgb(16, 185, 129)     # vert  = client VNC
 # nom affiche d'une machine d'apres son adresse (carte), sinon l'adresse
 $script:CardNameFor = {
   param([string]$ip)
@@ -23,7 +26,7 @@ $script:CardNameFor = {
   }
   return $ip
 }
-# sessions distantes connues : Moonlight (MlState) + mstsc (RdpState)
+# sessions distantes connues : Moonlight (MlState) + mstsc (RdpState) + remote apps (RemoteApps)
 $script:GetSessions = {
   $out = @()
   foreach ($ip in @($script:MlState.Keys)) {
@@ -35,6 +38,10 @@ $script:GetSessions = {
   foreach ($ip in @($script:RdpState.Keys)) {
     $r = $script:RdpState[$ip]
     $out += [pscustomobject]@{ Ip = [string]$ip; Name = (& $script:CardNameFor $ip); Kind = 'rdp'; State = 'open'; Idxs = @($r.Idxs); Since = $r.Since }
+  }
+  # remote apps reperees dans les fenetres (VS Code Remote-SSH, VNC) : affichees des le demarrage
+  foreach ($ra in @($script:RemoteApps.Values)) {
+    $out += [pscustomobject]@{ Ip = [string]$ra.Ip; Name = [string]$ra.Name; Kind = [string]$ra.Kind; State = 'open'; Idxs = @($ra.Idxs); Since = $ra.Since }
   }
   return ,$out
 }
@@ -72,9 +79,30 @@ $script:LauncherScreenIdx = {
   } catch { }
   return 0
 }
-# ramene au premier plan la fenetre d'une session (Moonlight : fenetre du flux ; mstsc : sa fenetre)
+# ramene au premier plan la fenetre d'une session (Moonlight : fenetre du flux ; mstsc : sa fenetre ;
+# remote apps : la fenetre reperee par ScanRemoteApps, hwnd enregistre)
 $script:FocusSession = {
   param([string]$ip, [string]$kind)
+  # --- remote apps : hwnd directement connu (fenetre reperee dans le scan)
+  if ($kind -eq 'vsc' -or $kind -eq 'vnc') {
+    $ra = @($script:RemoteApps.Values | Where-Object { $_.Kind -eq $kind -and $_.Ip -eq $ip }) | Select-Object -First 1
+    if (-not $ra) { & $script:LogFn ("remote app " + $kind + " " + $ip + " : plus reperee (fenetre fermee ?)"); return }
+    $hw = [IntPtr]::Zero
+    if ($ra.Hwnd -ne 0 -and [VscWinV4]::IsWindowVisible([IntPtr][long]$ra.Hwnd)) { $hw = [IntPtr][long]$ra.Hwnd }
+    if ($hw -eq [IntPtr]::Zero) {
+      try {
+        $pp = Get-Process -Id ([int]$ra.Pid) -ErrorAction Stop
+        foreach ($w in [VscScrV3]::GetProcessWindows([int]$ra.Pid)) { $hw = [IntPtr][long]$w[0]; break }
+        if ($hw -eq [IntPtr]::Zero) { $pp.Refresh(); $hw = $pp.MainWindowHandle }
+      } catch { }
+    }
+    if ($hw -eq [IntPtr]::Zero) { & $script:LogFn ("remote app " + $kind + " " + $ip + " : fenetre introuvable"); return }
+    & $script:LogFn ("remote app " + $kind + " " + $ip + " : fenetre ramenee au premier plan")
+    if ($script:WinHostDryRun) { return }
+    [void][VscWinV4]::ShowWindow($hw, 9)
+    [void][VscWinV4]::SetForegroundWindow($hw)
+    return
+  }
   $p = $null
   if ($kind -eq 'ml') {
     if ($script:RetryTimer -and $script:RetryTimer.Tag -and $script:RetryTimer.Tag.ContainsKey($ip)) { $p = $script:RetryTimer.Tag[$ip].Proc }
@@ -118,6 +146,8 @@ $script:PaintTopMap = {
   $pen = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(150, 255, 255, 255), 1)
   $penBlue = New-Object System.Drawing.Pen($script:TopPenBlue, 3)
   $penOr = New-Object System.Drawing.Pen($script:TopPenOrange, 3)
+  $penVsc = New-Object System.Drawing.Pen($script:TopPenVsc, 3)
+  $penVnc = New-Object System.Drawing.Pen($script:TopPenVnc, 3)
   foreach ($r in $layout) {
     $rc = New-Object System.Drawing.RectangleF($r.X, $r.Y, $r.Wd, $r.Ht)
     $isSel = $selIdx -contains $r.Idx
@@ -133,11 +163,13 @@ $script:PaintTopMap = {
     $br = New-Object System.Drawing.SolidBrush($fill)
     $g.FillRectangle($br, $rc); $br.Dispose()
     $g.DrawRectangle($pen, $rc.X, $rc.Y, $rc.Width, $rc.Height)
-    # ecran OCCUPE : bordure bleue (Moonlight) et / ou orange (mstsc)
-    if (@($active | Where-Object { $_.Kind -eq 'ml' }).Count -gt 0) { $g.DrawRectangle($penBlue, ($rc.X + 2), ($rc.Y + 2), ($rc.Width - 4), ($rc.Height - 4)) }
-    if (@($active | Where-Object { $_.Kind -eq 'rdp' }).Count -gt 0) {
-      $off = $(if (@($active | Where-Object { $_.Kind -eq 'ml' }).Count -gt 0) { 6 } else { 2 })
-      $g.DrawRectangle($penOr, ($rc.X + $off), ($rc.Y + $off), ($rc.Width - 2 * $off), ($rc.Height - 2 * $off))
+    # ecran OCCUPE : bordures imbriquees (bleu = Moonlight, orange = mstsc, violet = VS Code remote, vert = VNC)
+    $bOff = 2
+    foreach ($bk in @('ml', 'rdp', 'vsc', 'vnc')) {
+      if (@($active | Where-Object { $_.Kind -eq $bk }).Count -eq 0) { continue }
+      $bp = $(if ($bk -eq 'ml') { $penBlue } elseif ($bk -eq 'rdp') { $penOr } elseif ($bk -eq 'vsc') { $penVsc } else { $penVnc })
+      $g.DrawRectangle($bp, ($rc.X + $bOff), ($rc.Y + $bOff), ($rc.Width - 2 * $bOff), ($rc.Height - 2 * $bOff))
+      $bOff += 4
     }
     # LOGOS des clients distants poses sur l'ecran, avec le nom de la machine dessous
     $list = @($active + $ghost)
@@ -154,9 +186,9 @@ $script:PaintTopMap = {
           $slotX = [single]($rc.X + 4 + $si * $slotW); $si++
           $lx = [single]($slotX + ($slotW - $isz) / 2)
           $isGhost = ($se.State -eq 'ended' -or $se.State -eq 'lost')
-          $img = $(if ($se.Kind -eq 'rdp') { $script:RdpIcon20 } elseif ($se.State -eq 'live') { $script:MlIcon } else { $script:MlIconDim })
+          $img = $(if ($se.Kind -eq 'rdp') { $script:RdpIcon20 } elseif ($se.Kind -eq 'vsc') { $script:VscIcon20 } elseif ($se.Kind -eq 'vnc') { $script:VncIcon20 } elseif ($se.State -eq 'live') { $script:MlIcon } else { $script:MlIconDim })
           if ($img) { $g.DrawImage($img, $lx, $ly, $isz, $isz) }
-          if ($se.State -eq 'connecting') { $po = New-Object System.Drawing.Pen($script:TopPenOrange, 2); $g.DrawRectangle($po, ($lx - 2), ($ly - 2), ($isz + 4), ($isz + 4)); $po.Dispose() }
+          if ($se.Kind -eq 'ml' -and $se.State -eq 'connecting') { $po = New-Object System.Drawing.Pen($script:TopPenOrange, 2); $g.DrawRectangle($po, ($lx - 2), ($ly - 2), ($isz + 4), ($isz + 4)); $po.Dispose() }
           if ($showNames) {
             $nr = New-Object System.Drawing.RectangleF($slotX, ($ly + $isz + 1), $slotW, 11)
             $g.DrawString([string]$se.Name, $fontS, $(if ($isGhost) { $dimBr } else { $txtBr }), $nr, $sf)
@@ -184,7 +216,7 @@ $script:PaintTopMap = {
     $penBand = New-Object System.Drawing.Pen([System.Drawing.Color]::White, 1); $penBand.DashStyle = [System.Drawing.Drawing2D.DashStyle]::Dash
     $g.DrawRectangle($penBand, [Math]::Min($s.DragStart.X, $s.DragNow.X), [Math]::Min($s.DragStart.Y, $s.DragNow.Y), [Math]::Abs($s.DragStart.X - $s.DragNow.X), [Math]::Abs($s.DragStart.Y - $s.DragNow.Y)); $penBand.Dispose()
   }
-  $font.Dispose(); $fontS.Dispose(); $sf.Dispose(); $txtBr.Dispose(); $dimBr.Dispose(); $pen.Dispose(); $penBlue.Dispose(); $penOr.Dispose()
+  $font.Dispose(); $fontS.Dispose(); $sf.Dispose(); $txtBr.Dispose(); $dimBr.Dispose(); $pen.Dispose(); $penBlue.Dispose(); $penOr.Dispose(); $penVsc.Dispose(); $penVnc.Dispose()
 }
 $script:PaintTopList = {
   param($s, $e)
@@ -222,10 +254,10 @@ $script:PaintTopList = {
     foreach ($se in $sessions) {
       if (($y + $rowH) -gt ($s.Height - 3)) { $g.DrawString("…", $f8b, $grey, [single]$x, [single]$y); break }
       $isGhost = ($se.State -eq 'ended' -or $se.State -eq 'lost')
-      $img = $(if ($se.Kind -eq 'rdp') { $script:RdpIcon20 } elseif ($se.State -eq 'live') { $script:MlIcon } else { $script:MlIconDim })
+      $img = $(if ($se.Kind -eq 'rdp') { $script:RdpIcon20 } elseif ($se.Kind -eq 'vsc') { $script:VscIcon20 } elseif ($se.Kind -eq 'vnc') { $script:VncIcon20 } elseif ($se.State -eq 'live') { $script:MlIcon } else { $script:MlIconDim })
       if ($img) { $g.DrawImage($img, [single]$x, [single]($y + 1), 16, 16) }
-      $kindTxt = $(if ($se.Kind -eq 'rdp') { "mstsc" } else { "Moonlight" })
-      $stTxt = $(if ($se.Kind -eq 'rdp') { "ouvert" } else { ([string]$script:MlStateLabels[$se.State]).ToLower() })
+      $kindTxt = $(if ($se.Kind -eq 'rdp') { "mstsc" } elseif ($se.Kind -eq 'vsc') { "VS Code" } elseif ($se.Kind -eq 'vnc') { "VNC" } else { "Moonlight" })
+      $stTxt = $(if ($se.Kind -eq 'rdp' -or $se.Kind -eq 'vsc' -or $se.Kind -eq 'vnc') { "fenetre ouverte" } else { ([string]$script:MlStateLabels[$se.State]).ToLower() })
       $br = $(if ($isGhost) { $grey } else { $white })
       $g.DrawString([string]$se.Name, $f8b, $br, [single]($x + 22), [single]($y + 2))
       $nameW = $g.MeasureString([string]$se.Name, $f8b).Width
@@ -290,7 +322,9 @@ $script:BuildTopPanel = {
       if ($h -ne $s.HoverIdx) { $s.HoverIdx = $h; $s.Invalidate() }
       $tipTxt = ""
       if ($hit) {
-        $tipTxt = $(if ($hit.Kind -eq 'rdp') { "mstsc (Bureau à distance)" } else { "Moonlight" }) + " · " + $hit.Name + "`n" + $(if ($hit.Kind -eq 'rdp') { "ouvert" } else { ([string]$script:MlStateLabels[$hit.State]).ToLower() }) + $(if ($hit.Since) { " depuis " + $hit.Since.ToString('HH:mm:ss') }) + "`nClic : ramener la fenêtre au premier plan"
+        $hitKind = $(if ($hit.Kind -eq 'rdp') { "mstsc (Bureau à distance)" } elseif ($hit.Kind -eq 'vsc') { "VS Code Remote-SSH" } elseif ($hit.Kind -eq 'vnc') { "client VNC" } else { "Moonlight" })
+        $hitState = $(if ($hit.Kind -eq 'rdp' -or $hit.Kind -eq 'vsc' -or $hit.Kind -eq 'vnc') { "fenêtre ouverte" } else { ([string]$script:MlStateLabels[$hit.State]).ToLower() })
+        $tipTxt = $hitKind + " · " + $hit.Name + "`n" + $hitState + $(if ($hit.Since) { " depuis " + $hit.Since.ToString('HH:mm:ss') }) + "`nClic : ramener la fenêtre au premier plan"
       } elseif ($h -gt 0) {
         $sc = @($script:Screens | Where-Object { $_.Idx -eq $h }) | Select-Object -First 1
         if ($sc) { $tipTxt = "Écran " + $sc.Idx + " : " + $sc.PW + "x" + $sc.PH + $(if ($sc.PW -ne $sc.W) { " (vu " + $sc.W + "x" + $sc.H + " avec la mise à l'échelle)" }) + $(if ($sc.Primary) { " (principal)" }) + "`nClic : choisir cet écran`nGlisser : plusieurs écrans contigus`nCtrl+clic : ajouter / retirer" }

@@ -219,6 +219,25 @@ try {
     }
   }
 } catch { $script:VscIconBmp = $null }
+# Versions 20 px des logos VS Code et VNC : posees sur le PLAN DES ECRANS (panneau du
+# haut) quand une remote app de cette machine y est reperee (fenetre ouverte).
+$script:VscIcon20 = $null; $script:VncIcon20 = $null
+try {
+  if ($script:VscIconBmp) {
+    $script:VscIcon20 = New-Object System.Drawing.Bitmap(20, 20, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $gV = [System.Drawing.Graphics]::FromImage($script:VscIcon20)
+    $gV.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $gV.DrawImage($script:VscIconBmp, 0, 0, 20, 20); $gV.Dispose()
+  }
+} catch { $script:VscIcon20 = $null }
+try {
+  if ($script:VncIconBmp) {
+    $script:VncIcon20 = New-Object System.Drawing.Bitmap(20, 20, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $gN = [System.Drawing.Graphics]::FromImage($script:VncIcon20)
+    $gN.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $gN.DrawImage($script:VncIconBmp, 0, 0, 20, 20); $gN.Dispose()
+  }
+} catch { $script:VncIcon20 = $null }
 
 # VRAIE ICONE SSH = celle du terminal que le clic SSH ouvre :
 #   Windows Terminal (wt.exe) -> son logo officiel 16 px (PNG transparent du

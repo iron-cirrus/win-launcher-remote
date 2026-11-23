@@ -92,9 +92,12 @@ $script:BuildMoonlightProfile = {
   $kbps = [int][Math]::Min($cap, [Math]::Max(1000, [Math]::Round($kbps / 500) * 500))
   if ($script:MoonlightProfileBitrateKbps) { $kbps = [int]$script:MoonlightProfileBitrateKbps }
   $dim = "" + $w + "x" + $h
+  $args2 = @('--resolution', $dim, '--fps', ("" + $fps), '--bitrate', ("" + $kbps))
+  # machine Linux (Sunshine, encodeur HEVC) : codec force a HEVC (le H.264 du decodeur est limite a 4096 px)
+  if ($ip -and $script:NoRdp -and $script:NoRdp.ContainsKey($ip)) { $args2 += @('--video-codec', 'HEVC') }
   return [pscustomobject]@{
     Width = $w; Height = $h; Fps = $fps; BitrateKbps = $kbps; Scaled = $scaled
-    Args = @('--resolution', $dim, '--fps', ("" + $fps), '--bitrate', ("" + $kbps))
+    Args = $args2
     Text = $dim + " a " + $fps + " images/s, " + [Math]::Round($kbps / 1000, 1) + " Mbit/s" + $(if ($scaled) { " (reduite : plafond " + $maxW + "x" + $maxH + ")" } elseif ($limTxt) { $limTxt })
   }
 }

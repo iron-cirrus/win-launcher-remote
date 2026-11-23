@@ -156,3 +156,54 @@ public class VscScrV3 {
 "@
 }
 
+# P/Invoke 3 : fenetres "remote app" (VS Code Remote-SSH, clients VNC) avec le MONITEUR
+# le plus proche. Indispensable au demarrage : une fenetre REDUITE dans la barre des taches
+# renvoie un rectangle fantaisiste (ex. -1146,-1150 -> 310,-242) et GetProcessWindows
+# (filtre >100x100 px) ne la voit pas du moins pas. MonitorFromWindow, lui, repond
+# (MONITOR_DEFAULTTONEAREST) et designe l'ecran ou la fenetre reviendra.
+# Type VERSIONNE (VscAppV2) : un Add-Type ne peut pas etre redefini dans la session.
+if (-not ('VscAppV2' -as [type])) {
+  Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+using System.Collections.Generic;
+public class VscAppV2 {
+  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)] public struct MONINFO { public int cb; public RECT rgnMonitor; public RECT rgnWork; [MarshalAs(UnmanagedType.ByValTStr, SizeConst=32)] public string name; public int flags; }
+  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc p, IntPtr l);
+  public delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll")] static extern int GetWindowTextLength(IntPtr h);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern int GetWindowText(IntPtr h, System.Text.StringBuilder sb, int n);
+  [DllImport("user32.dll")] static extern IntPtr MonitorFromWindow(IntPtr h, uint flags);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern bool GetMonitorInfo(IntPtr h, ref MONINFO mi);
+  const uint TONEAREST = 2;
+
+  // Fenetres visibles dont le titre contient "SSH:" ou "VNC" : [hwnd, pid, titre, moniteur gauche/haut/droite/bas]
+  public static List<string[]> RemoteAppWindows() {
+    var found = new List<IntPtr>();
+    EnumWindows((h, l) => { if (IsWindowVisible(h)) found.Add(h); return true; }, IntPtr.Zero);
+    var res = new List<string[]>();
+    foreach (var h in found) {
+      int len = GetWindowTextLength(h);
+      if (len <= 0) continue;
+      var sb = new System.Text.StringBuilder(len + 1);
+      GetWindowText(h, sb, sb.Capacity);
+      string t = sb.ToString();
+      if (t.IndexOf("SSH:", StringComparison.OrdinalIgnoreCase) < 0 && t.IndexOf("VNC", StringComparison.OrdinalIgnoreCase) < 0 && t.IndexOf("Visual Studio Code", StringComparison.OrdinalIgnoreCase) < 0) continue;
+      uint pid; GetWindowThreadProcessId(h, out pid);
+      int ml = 0, mt = 0, mr = 0, mb = 0;
+      IntPtr mon = MonitorFromWindow(h, TONEAREST);
+      if (mon != IntPtr.Zero) {
+        var mi = new MONINFO(); mi.cb = Marshal.SizeOf(mi);
+        if (GetMonitorInfo(mon, ref mi)) { ml = mi.rgnMonitor.Left; mt = mi.rgnMonitor.Top; mr = mi.rgnMonitor.Right; mb = mi.rgnMonitor.Bottom; }
+      }
+      res.Add(new string[] { ((long)h).ToString(), pid.ToString(), t, ml.ToString(), mt.ToString(), mr.ToString(), mb.ToString() });
+    }
+    return res;
+  }
+}
+"@
+}
+
