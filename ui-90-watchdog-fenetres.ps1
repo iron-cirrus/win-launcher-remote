@@ -126,6 +126,11 @@ $script:OpenCheckTick = {
 
   # --- SONDE VNC : un port par tick et par carte (5900 -> 5904), asynchrone ---
   foreach ($c in $script:CardList) {
+    # sonde NEGATIVE rejouee toutes les 60 s (machine joignable) : un serveur VNC demarre apres le
+    # launcher, ou une machine injoignable au demarrage, doit quand meme faire apparaitre l'icone
+    if ($c.VncDone -and -not $c.VncFound -and $c.LastOk -eq $true -and $c.VncDoneAt -and (((Get-Date) - $c.VncDoneAt).TotalSeconds -ge 60)) {
+      $c.VncDone = $false; $c.VncPort = 5900
+    }
     if ($c.VncDone -or -not $c.PingHost) { continue }
 
     # 1) resultat de la sonde precedente ?
@@ -153,7 +158,8 @@ $script:OpenCheckTick = {
     # 2) sinon, lance la sonde du port courant
     if ($c.VncPort -gt 5904) {
       $c.VncDone = $true
-      & $script:LogFn ("VNC: aucun port 5900-5904 ouvert sur " + $c.PingHost)
+      $c.VncDoneAt = Get-Date
+      if (-not $c.VncLogged) { $c.VncLogged = $true; & $script:LogFn ("VNC: aucun port 5900-5904 ouvert sur " + $c.PingHost + " (nouvel essai toutes les 60 s)") }
       continue
     }
     try {

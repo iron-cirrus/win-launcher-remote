@@ -33,7 +33,7 @@
       NoVscWatch = ($m.RdpIp -and -not $m.Host)
       PingHost = $m.HostName; Alias = $(if ($m.Host) { $m.Host } else { $m.HostName }); LastOk = $null; LastOpen = $null
       # sonde VNC asynchrone : un port par tick du watchdog (5900 -> 5904)
-      VncPort = 5900; VncAr = $null; VncTcp = $null; VncFound = $false; VncDone = $false
+      VncPort = 5900; VncAr = $null; VncTcp = $null; VncFound = $false; VncDone = $false; VncDoneAt = $null; VncLogged = $false
       # ping ASYNCHRONE : tache SendPingAsync en cours + objet Ping a liberer
       PingTask = $null; PingObj = $null; PingFail = $false
       # 2e chance si le ping echoue : connexion TCP au port du service (SSH : Port du .ssh/config,

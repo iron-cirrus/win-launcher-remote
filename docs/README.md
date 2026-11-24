@@ -5,6 +5,7 @@ Un clic sur une carte ouvre la machine : VS Code Remote-SSH (Linux), Moonlight o
 
 > Documents voisins : [FUNCTIONS.md](FUNCTIONS.md) (reference de chaque fonction, generee) ·
 > [STATE.md](STATE.md) (variables d'etat, timers, fichiers ecrits) · [AI-CONTEXT.md](AI-CONTEXT.md) (regles pour une IA) ·
+> [CHANGELOG.md](CHANGELOG.md) (historique des modifications, y compris suppressions) ·
 > [api-index.json](api-index.json) (index lisible par machine).
 
 ## Lancer

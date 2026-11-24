@@ -1,7 +1,7 @@
 ﻿# AI-CONTEXT — lire AVANT de modifier le code
 
 Projet : lanceur WinForms en **PowerShell 5.1** (Windows). Entree : `C:\app\win-launcher-remote\start.ps1` ; modules : meme dossier (racine du depot `win-launcher-remote`).
-Index machine : [api-index.json](api-index.json) (fichier → blocs → lignes → description). Reference lisible : [FUNCTIONS.md](FUNCTIONS.md). Etat : [STATE.md](STATE.md). Vue humaine : [README.md](README.md).
+Index machine : [api-index.json](api-index.json) (fichier → blocs → lignes → description). Reference lisible : [FUNCTIONS.md](FUNCTIONS.md). Etat : [STATE.md](STATE.md). Vue humaine : [README.md](README.md). Historique des modifications : [CHANGELOG.md](CHANGELOG.md).
 Langue des commentaires et du journal : **francais, sans accents dans le code** (ASCII dans les chaines de log, les accents sont tolerables mais les fichiers sont en UTF-8 **avec BOM** — a conserver, PS 5.1 en a besoin).
 
 ## Modele d'execution (a comprendre d'abord)
@@ -49,6 +49,8 @@ Attention : `LogFn` n'existe qu'apres `ui-30` ; les modules `01..13` testent `if
 - **Ajouter une etape de carte** : creer `cartes\NN-nom.ps1` ; elle voit `$m`, `$card`, `$cardW`, `$cardH`, `$lblLabel`… et doit ajouter ses controles a `$card.Controls` (avant `09-finalisation`, qui fait `AddRange` et le z-order).
 - **Ajouter un reglage** : declarer `$script:Nom = valeur` dans le fichier `04-`/`06-` concerne, avec un commentaire expliquant l'unite.
 - **Valider apres modification** : analyser chaque fichier avec `[System.Management.Automation.Language.Parser]::ParseFile` (0 erreur), puis lancer le script ~20 s et verifier l'absence d'erreur sur stderr (`Start-Process powershell -File ... -RedirectStandardError`). Un test fonctionnel reel (clic, Moonlight) exige l'utilisateur.
+- **Journaliser TOUTE modification** : ajouter une entree en tete de `docs\CHANGELOG.md` (date, fichiers touches, quoi et pourquoi). Les suppressions et abandonnes s'y documentent AUSSI, avec le motif (ex. module 14 « barres secondaires » retire le 2026-11-24 car mal gre par Explorer) — cela evite de reintroduire une approche deja testee et rejetee.
+- **Conserver le BOM UTF-8 et les fins de ligne CRLF** des fichiers `.ps1` (PS 5.1) : apres une edition par outil externe, verifier `EF BB BF` en tete et reecrire en CRLF si necessaire, puis revalider la syntaxe.
 - **Regenerer la doc** : `powershell -NoProfile -File C:\app\win-launcher-remote\docs\generate-api-docs.ps1` (met a jour `FUNCTIONS.md` et `api-index.json`). Ajouter une description manuelle dans `descriptions.psd1` pour un bloc sans commentaire.
 - **Ne pas** deplacer un bloc `$script:X = {` apres le premier code qui l'appelle : l'ordre de definition compte (les blocs sont appeles a l'execution, mais `. $script:MergeLanCache` et `UpdateHome` s'executent des le chargement).
 
